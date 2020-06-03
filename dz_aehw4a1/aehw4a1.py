@@ -37,7 +37,7 @@ class Domoticz_AehW4a1:
             self.strVersion = bData.decode('utf-8').replace("+XMV:","")
             return True
 
-        raise ConnectionError(f"Unknown device {self._host}")
+        raise ConnectionError("Unknown device " + self._host)
 
     def version(self):
         if self.strVersion != "":
@@ -54,7 +54,7 @@ class Domoticz_AehW4a1:
         try:
             ipaddress.IPv4Network(self._host)
         except ValueError:
-            raise ConnectionError(f"Invalid IP address: {self._host}") from None
+            raise ConnectionError("Invalid IP address: " + self._host) from None
 
         try:
             objConnect = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
@@ -64,7 +64,7 @@ class Domoticz_AehW4a1:
             return objConnect
 
         except:
-            raise ConnectionError(f"AC unavailable at {self._host}") from None
+            raise ConnectionError("AC unavailable at " + self._host) from None
 
     def command(self, command):
         for name, member in ReadCommand.__members__.items():
@@ -81,7 +81,7 @@ class Domoticz_AehW4a1:
                 else:
                     return self._update_command(member)
 
-        raise UnkCmdError(f"Not yet implemented: {command}")
+        raise UnkCmdError("Not yet implemented: " + command)
 
     def _update_command(self, command):
         pure_bytes = self._send_recv_packet(command.value)
@@ -89,7 +89,7 @@ class Domoticz_AehW4a1:
         if self._check_response(packet_type, pure_bytes):
             return True
 
-        raise UnkPacketError(f"Unknown packet type {packet_type}: {pure_bytes.hex()}")
+        raise UnkPacketError("Unknown packet type " + packet_type + ": " + pure_bytes.hex())
 
     def _read_command(self, command):
         pure_bytes = self._send_recv_packet(command.value)
@@ -99,7 +99,7 @@ class Domoticz_AehW4a1:
             result = self._bits_value(packet_type, pure_bytes, data_start_pos)
             return result
 
-        raise UnkPacketError(f"Unknown packet type {packet_type}: {pure_bytes.hex()}")
+        raise UnkPacketError("Unknown packet type " + packet_type + ": " + pure_bytes.hex())
 
     def _send_recv_packet(self, command_bytes):
         try:
@@ -118,13 +118,13 @@ class Domoticz_AehW4a1:
             return bData
 
         except:
-            raise ConnectionError(f"AC unavailable at {self._host}") from None
+            raise ConnectionError("AC unavailable at " + self._host) from None
         finally:
             objConnect.close()
 
     def _bits_value(self, packet_type, pure_bytes, data_pos):
         result = {}
-        binary_string = f"{int(pure_bytes.hex(),16):08b}"
+        binary_string = "{:08b}".format(int(pure_bytes.hex(),16))
         binary_data = binary_string[data_pos*8:-24]
         for data_packet in DataPacket:
             if packet_type in data_packet.name:
@@ -133,18 +133,18 @@ class Domoticz_AehW4a1:
                                         (field.offset + field.length - 1)]
                 return result
 
-        raise UnkDataError(f"Unknown data type {packet_type}: {binary_data}")
+        raise UnkDataError("Unknown data type " + packet_type + ": " + binary_data)
 
     def _packet_type(self, string):
         type = int(string[13:14].hex(),16)
         sub_type = int(string[14:15].hex(),16)
-        result = f"{type}_{sub_type}"
+        result = str(type) + "_" + str(sub_type)
         return result
 
     def _check_response(self, packet_type, pure_bytes):
         for response_packet in ResponsePacket:
             if packet_type in response_packet.name:
                 if response_packet.value not in pure_bytes:
-                    raise WrongRespError(f"Wrong response for type {packet_type}: {pure_bytes.hex()}")
+                    raise WrongRespError("Wrong response for type " + packet_type + ": " + pure_bytes.hex())
                 return len(response_packet.value)
         return False
